@@ -1,0 +1,55 @@
+Mongo Query Performance
+//--------------------------------------------------------
+- use Indices for quick record lookup
+- sorted by a specific field
+- allow beeline to specific record
+- prevent a full collection scan on the records
+- PITFALLS
+  -- take longer to write to collection
+  -- take more memory space
+  -- failed when searching with multiple params
+-SOLUTION
+  -- caching query layer
+
+Caching Query layer
+//--------------------------------------------------------
+- Mongoose query go to cache server and check if query
+exists before
+- if not => mongodb execute query and save query to cache server
+- send response back to Mongoose
+- if exists => cache server send data back without mongodb execution
+  -- no Indices
+  -- no table scan
+- only work for READ query
+- create a Redis server to intercept read query and check if a record
+- of the query is saved in the memory server
+- * Query should be consistent but unique between users *
+
+// Mongoose Query Object
+//--------------------------------------------------------
+ - return a query Object
+ - .exec() actually execute it.
+ - check redis between query object and exec function
+
+ - exec((err, result) => { ... });
+ - same as writing query.then(result => { ... });
+ - same as writing async/await syntax
+
+ - rewrite exec function:
+     query.exec = function() {
+      // search for redis key and return if found
+
+      const result = await client.get('query key');
+
+      if(result) 
+        return result;
+
+      // otherwise issue the query *as normal*
+      runOriginalExecFunction();
+
+      // then save the value to redis
+      client.set('query key', result);
+
+      return result;
+    }
+  - encapsulate collection name and options

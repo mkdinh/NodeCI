@@ -3,9 +3,13 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+  "jest": {
+    "setupTestFrameworkScriptFile": "./tests/setup.js"
+  },
   "scripts": {
     "start": "node index.js",
     "server": "nodemon index.js --ignore tests",
+    "test": "jest",
     "client": "npm run start --prefix client",
     "dev": "concurrently \"npm run server\" \"npm run client\"",
     "build":
@@ -23,7 +27,7 @@
     "jest": "^22.1.4",
     "migrate-mongoose": "^3.2.2",
     "mongoose": "^4.11.1",
-    "nodemon": "^1.11.0",
+    "node-redis": "^0.1.7",
     "passport": "^0.3.2",
     "passport-google-oauth20": "^1.0.0",
     "path-parser": "^2.0.2",

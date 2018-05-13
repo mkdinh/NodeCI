@@ -1,0 +1,293 @@
+// Integration Testing
+//--------------------------------------------------------
+- involve multiples units working together
+- headless => without a user interface
+  -- run much faster
+
+- challenge
+  -- launch Chromium programatically
+  -- assertions in jest about stuff thats happen in chrome
+  -- how to simulate loggin in as a user
+
+- always want to use fresh data
+- blank slate each test
+
+- test both the happy and defensive path
+  -- make sure that there are some level of authentication
+
+PUPPETEER
+//--------------------------------------------------------
+- start up chromium
+- create new browser window (browser object)
+- browser create a page (tab)
+
+TEST FLOW
+//--------------------------------------------------------
+- launch Chrominum
+- navigate to app
+- click stuff on screen
+- use DOM selector to retrieve the  content of the selector
+- write assertion to make sure the content is correct
+
+BEHIND THE SCENE
+//--------------------------------------------------------
+- Jest run in Node environment
+- Chromium run in Browser
+
+- take code we write and serialize it => chromium browser
+- deserialize into javascript and evaluate it in browser
+
+
+// PROBLEM WITH 0AUTH SERVICE
+//--------------------------------------------------------
+- problem with Google 0Auth service
+- show us captcha to show that you are human
+
+- create a secret route / automatically loggin
+  -- bad practice to change your server to make your test work
+
+- when test are running don't require authentication
+  -- serve is running 100% from test suite we can change server only 
+  when tests are running
+  
+- convince our server that the Chromium browser is logged into the app
+by faking a session
+  -- fabricate a session and set it on chromium instance
+
+- Google Auth service flow: 
+  -- someway to go around Google Auth when Testing
+  -- maybe only work with Google but not other provider
+
+- Cookie Session & Passport
+//--------------------------------------------------------
+- cookie-session maintaining session for a particular user
+- passport handle 0auth
+
+- AUTHENTICATION PROCESS
+//--------------------------------------------------------
+USER
+1. => NODE: User visit /auth/ Google
+2. => GOOGLE: User forward to Google
+3. <= NODE: User enter login & redirect to auth/google/callback (NODE)
+  - query parameter
+4. => GOOGLE: server asks for more details about user
+5. <= NODE: Google response with user profile
+
+RELEVANT TO TESTING SUITES
+//--------------------------------------------------------
+6. <= USER: set cookie on user browser that indentifies them
+  - create cookie
+  - browser save that cookie
+  - attached cookie for each request
+7. => NODE: all future request include data that indentifies this user
+
+INNER WORKINGS OF SESSIONS
+//--------------------------------------------------------
+- callback of google authentication returns 2 cookies
+  - session & session-sig
+  - identify browser to server on future request
+  - automatically tag on these 2 cookies on each request
+- what is the hell is a cookie?
+  - safe-buffer convert session into JS object
+  - Buffer.from (session, 'base64').toString('utf8')
+    -- return an object with another userId
+    -- data stored inside of cookie is reference to a user stored inside
+    of our database
+- How is that value is consumed by our appliction?
+  -- when a user send a request
+  -- cookie and cookie-sig are send with the request
+    -- cookie-sig is to make sure that user does not tamper with session
+    -- cookieSession parse cookie into user object and assign it into 
+    req.session properties
+    -- req.session = {passport: { user: "....." }}
+    -- mongodb look up userId if true, incoming request 
+      belongs to the user
+    -- else user is not login
+- Authentication is tied to session values inside of cookies
+  -- somehow to create a value that match up to user inside of database
+  -- assign it in cookie to chrome instant and application believed that 
+  we are signed in.
+
+
+REVIEW OF AUTHENTICATION
+//--------------------------------------------------------
+Any time a request come in
+- request come into server
+- pass of to series of middlewares (cookie session and passport)
+  -- do some operation to modify it
+  -- cookieSession
+    --- pull properties session and session-sigs from cookie
+    --- use session.sig to ensure session wasn't manipulated
+    --- decode session into javascipt object
+    --- place object on req.session
+  -- Passport
+    --- look at req.session and try to find req.session.passport.user 
+    --- if an ID is stored, pass it to deserializeUser
+      ---- convert userId to an actual Mongo record
+    --- get back a user and assign it to req.user
+
+FAKE AUTH TEST SUITE TEST
+//--------------------------------------------------------
+- create a new page instance
+- take an existing userId and generate a fake session object
+- sign the session object with keygrip
+- set session and signature on our Page instance as cookie
+  -- use that page to make request
+  -- trick our server that we are signed in
+
+- sessions.sig ensure that sessions wasn't tamper
+  -- base64 + cookie-signing-key = session signature
+  -- unique signature that cannot be reverse engineer without cookie-signing-key
+  -- keygrip:
+    > const KeyGrip = require('keygrip');
+    > const keygrip = new KeyGrip(["123123123"]) => session key
+    > const sessionSig = keygrip.sign('session='+session);
+    > keygrip.verify('session='+session, sessionSig);
+
+
+FACTORY
+//--------------------------------------------------------
+- function used to generate some test data
+  -- assemble some data and reuse it
+  -- don't want to use the same set of data
+  -- create a brand new user for each session
+  -- prevent data from leaking in
+
+- Jest start up a new instance of Node
+  -- find any test file and execute that file alone
+  -- server code is not in the same environment as test code
+
+- create a global setup file for Jest
+
+- reusable authentication function
+ -- add new method to page instance
+ -- Page.prototype.login = await function(){ ... }
+
+ -- if you cannot extends Page Class
+  -- wrap it with with a Custom page
+
+PROXY
+//--------------------------------------------------------
+- manage accesst to some objects
+  -- Greeting and MoreGreeting
+  -- access proxy object and decide which one to do
+  -- create new ProxyPage with native Page() and customPage()
+
+COMMON SETUP
+//--------------------------------------------------------
+- be able to do some initial test setup that is common for some tests
+- describe set of common test that share some common test logic
+- can have beforeEach and afterEach that is shared between the test
+
+API TEST
+//--------------------------------------------------------
+- for testing api, most likely have to wait for something to occur
+- API is not be able to make a direct api request if they are not signed in
+- fetch does not use automatically use cookies
+- they should send along there cookie w or w/o sendin in
+
+- use fetch('api/post', {
+  method: "POST",
+  credentials: "same-origin"
+  headers: {
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({ title: 'my Title', content: 'My Content' });
+})
+
+CONTINUOUS INTEGRATION
+//--------------------------------------------------------
+- process of merging all code change into a single branch
+- CI server
+  -- serve that run automatic checks (test)
+  on the codebase to ensure the changes hasn't break anything
+  -- automatically doing some checking
+
+- CI flow
+  -- developer pushes code to github
+  -- CI Server detects that new push of code has occured
+  -- CI Server clone proejct to a cloud based vitrual machine
+  -- CI Server run all test
+  -- if all test pass, CI Server marks build as passing
+  and does some optional followup
+    --- send email, automatically deploy , put notification on Github
+
+CI provider
+//--------------------------------------------------------
+- providing CI server as services
+
+CI Travis flow
+//--------------------------------------------------------
+- we push to github
+- travis automatically detect pushed code
+- travis clone our project
+- run tests using a '.yaml' file
+- if test are OK, Travis sends us an email
+
+YAML to JSON
+//--------------------------------------------------------
+ex: 
+
+color : 'red'
+languagesIKnow: 
+    english: "very well"
+    spanish: "kinda"
+    german: "not at all"
+countToFive:
+    - "one"
+    - "two"
+    - "three"
+
+==>
+
+{
+	"color": "red",
+	"languagesIKnow": {
+		"english": "very well",
+		"spanish": "kinda",
+		"german": "not at all"
+	},
+	"countToFive": [
+		"one",
+		"two",
+		"three"
+	]
+}
+
+YAML CONFIGURATION
+//--------------------------------------------------------
+- when on ci/production
+  -- react port is no longer 3000
+  -- need to make sure that port start at 3000
+  
+language: node_js *what language to use*
+node_js: *what version of node to use*
+  - "8"
+dist: trusty *what version of linux flavor to use*
+services: *services used by the application (servers, ect)*
+  - mongodb
+  - redis-server
+env: (set specific environmental variables)
+  - NODE_ENV=ci
+cache: *cache node_modules so that it does not get installed every test*
+  directories *two node_modules for client/server*
+    - node_modules
+    - client/node_modules
+install: *install dependencies and build app*
+  - npm install
+  - npm run build
+script:
+  - nohup npm run start & 
+    *nohup: don't close any command started by shell*
+    *&: run command in the background so that we can run other commands*
+  - sleep 3 *wait for 3 secs*
+  - npm run test *run test suites*
+
+CI PROJECT PREP
+//--------------------------------------------------------
+- add ci.js key files
+- fix redis URL in services/cache.js
+- add redis URL to dev.js and ci.js
+- add mongoDB to ci.js
+- make sure server start on port 3000 in CI mode
+- make sure server serves react client files in CI mode
