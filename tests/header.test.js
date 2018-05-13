@@ -5,7 +5,6 @@ let page;
 beforeEach(async () => {
   // asynchronous launching new browser
   page = await Page.build();
-  await page.goto("http://localhost:3000");
 });
 
 afterEach(async () => {

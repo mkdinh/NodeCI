@@ -5,7 +5,9 @@ const keys = require("../config/keys");
 
 let client;
 
-if (["ci"].contains(process.env.NODE_ENV)) {
+if (["ci"].includes(process.env.NODE_ENV)) {
+  client = redis.createClient(keys.redisURI);
+} else {
   client = redis.createClient(keys.redisPort, keys.redisURI, {
     no_ready_check: true,
   });
@@ -13,8 +15,6 @@ if (["ci"].contains(process.env.NODE_ENV)) {
   client.auth(keys.redisPassword, function(err) {
     if (err) throw err;
   });
-} else {
-  client = redis.createClient(keys.redisURI);
 }
 
 client.hget = util.promisify(client.hget);

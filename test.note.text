@@ -291,3 +291,4 @@ CI PROJECT PREP
 - add mongoDB to ci.js
 - make sure server start on port 3000 in CI mode
 - make sure server serves react client files in CI mode
+

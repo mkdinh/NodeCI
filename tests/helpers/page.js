@@ -12,9 +12,11 @@ class CustomPage {
 
     const page = await browser.newPage();
     const customPage = new CustomPage(page);
-
+    // go to application after creating new page
+    await page.goto("http://localhost:3000");
     // return new proxy for managing page function without modifying
     // puppeteer's page instance
+
     return new Proxy(customPage, {
       get: function(target, property) {
         return target[property] || browser[property] || page[property];
