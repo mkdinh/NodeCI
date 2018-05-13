@@ -21,6 +21,7 @@ test("The header has the correct text", async () => {
 test("clicking login starts oauth flow", async () => {
   // click on login button
   await page.click(".right a");
+  await page.waitForNavigation();
   // get page url
   let url = await page.url();
   // match against google 0auth flow
